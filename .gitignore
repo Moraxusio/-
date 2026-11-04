@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# datasets are downloaded, not committed
+data/lolv2/
+data/**/*.png
+!assets/samples/*.png
+
+# generated intermediate images
+results/enhanced/
+results/test_*.csv
+results/test_*.json
+*.zip
+
+# local previews / GUI outputs
+.dsh-office-*/
+outputs/
+
+# OS
+.DS_Store
+Thumbs.db
