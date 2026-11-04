@@ -73,6 +73,12 @@ python scripts/make_figures.py
 python scripts/make_report.py
 ```
 
+## 演示视频
+
+[![video preview](report/视频预览.png)](report/演示视频.mp4)
+
+无声演示，约 51 秒，1280×720：标题 → 问题 → 方法流程 → 4 组前后对比 → 结果 → 复现。
+
 ## 项目结构
 
 ```text
@@ -89,10 +95,11 @@ lowlight-retinex/
   scripts/run_ablation.py    # 消融
   scripts/make_figures.py    # 绘图
   scripts/make_report.py     # 生成 docx 报告
+  scripts/make_video.py      # 生成无声演示视频
   app/gui.py                 # Tkinter GUI
   assets/samples/            # 两对示例图片
   results/                   # 指标与图表
-  report/                    # 课程报告
+  report/                    # 课程报告、PDF、演示视频、封面
 ```
 
 ## 数据与许可证
