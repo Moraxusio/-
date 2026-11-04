@@ -864,7 +864,8 @@ def section_results(doc: Document):
             "低 0.54 dB，说明自适应 Gamma 在亮度匹配上更优。去掉引导滤波后 PSNR/SSIM 仅"
             "小幅下降（0.04 dB/0.0007），说明在该数据上高斯光照图也能工作；引导滤波的主要"
             "价值是与 LIME 稀疏求解相比的 O(N) 效率和边缘保持。去掉白平衡后 PSNR 略降、"
-            "SSIM 略升，影响较小。"
+            "SSIM 略升，影响较小。表 6 的时间是在同一轮消融实验中测得的相对耗时，受进程"
+            "负载影响，绝对数值与表 5 略有差异。"
         )
         doc.add_page_break()
         add_picture(doc, FIG / "ablation.png", 15.0, "图 5  消融实验的 PSNR/SSIM 对比")
