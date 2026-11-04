@@ -1,0 +1,17 @@
+{
+  "radius": 16,
+  "eps": 0.02,
+  "illumination_smoother": "guided",
+  "adaptive_gamma": true,
+  "gamma_fixed": 0.6,
+  "gamma_target": 0.45,
+  "gamma_lo": 0.35,
+  "gamma_hi": 0.85,
+  "gamma_offset": 0.08,
+  "alpha": 1.0,
+  "saturation": 0.8,
+  "white_balance": 0.5,
+  "denoise_h": 4.0,
+  "highlight_percentile": 99.5,
+  "highlight_scale": 0.96
+}
