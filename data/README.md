@@ -16,11 +16,15 @@ data/lolv2/
   Train/
     Input/00001.png ... 00689.png
     GT/00001.png    ... 00689.png
+  Val/                    # select_validation.py 生成
+    Input/*.png (30)
+    GT/*.png (30)
 ```
 
-运行 `python scripts/download_data.py` 会自动下载 100 对测试图像和 30 对验证图像
-（Train 前 30 对）。数据体积约 94 MB，不纳入 git 版本管理；`assets/samples/` 中保留了
-两对示例，便于快速试用。
+运行 `python scripts/download_data.py` 会自动下载 689 对训练图像和 100 对测试图像。
+随后运行 `python scripts/select_validation.py`，按测试集 GT 亮度分布从训练集中分层抽取
+30 对，复制到 `data/lolv2/Val/` 作为亮度匹配验证集。数据体积约 300 MB，不纳入 git
+版本管理；`assets/samples/` 中保留了两对示例，便于快速试用。
 
 引用：
 

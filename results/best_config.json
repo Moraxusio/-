@@ -7,10 +7,11 @@
   "gamma_target": 0.45,
   "gamma_lo": 0.35,
   "gamma_hi": 0.85,
-  "gamma_offset": 0.08,
+  "gamma_offset": 0.12,
   "alpha": 1.0,
   "saturation": 0.8,
   "white_balance": 0.5,
+  "exposure_cap": 0.4,
   "denoise_h": 4.0,
   "highlight_percentile": 99.5,
   "highlight_scale": 0.96

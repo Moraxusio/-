@@ -44,6 +44,7 @@ VARIANTS = {
     "fixed gamma": {"adaptive_gamma": False},
     "w/o chroma control": {"saturation": 1.0},
     "w/o white balance": {"white_balance": 0.0},
+    "w/o exposure cap": {"exposure_cap": 0.0},
     "w/o denoising": {"denoise_h": 0.0},
 }
 

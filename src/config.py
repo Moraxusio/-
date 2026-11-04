@@ -25,6 +25,7 @@ class RetinexConfig:
     alpha: float = 1.0
     saturation: float = 0.8
     white_balance: float = 0.5
+    exposure_cap: float = 0.40  # 0 disables; caps the output mean to avoid over-brightening
     denoise_h: float = 4.0
     highlight_percentile: float = 99.5
     highlight_scale: float = 0.96

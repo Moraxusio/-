@@ -254,46 +254,40 @@ def ablation_plot() -> None:
 
 
 def tuning_plot() -> None:
-    path = ROOT / "results" / "tuning.csv"
+    path = ROOT / "results" / "tuning_matched.csv"
     if not path.is_file():
-        print("no tuning.csv; skip tuning plot")
+        path = ROOT / "results" / "tuning.csv"
+    if not path.is_file():
+        print("no tuning csv; skip tuning plot")
         return
     with path.open("r", encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
-    stage1 = [r for r in rows if int(float(r["radius"])) == 16 and abs(float(r["eps"]) - 0.02) < 1e-9]
-    stage2 = [r for r in rows if abs(float(r["gamma_offset"]) - 0.12) < 1e-9
-              and abs(float(r["saturation"]) - 0.8) < 1e-9 and abs(float(r["white_balance"]) - 0.5) < 1e-9]
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.6))
-    if stage1:
-        gammas = sorted({float(r["gamma_offset"]) for r in stage1})
-        sats = sorted({float(r["saturation"]) for r in stage1})
-        mat = np.full((len(gammas), len(sats)), np.nan)
-        for r in stage1:
-            i = gammas.index(float(r["gamma_offset"]))
-            j = sats.index(float(r["saturation"]))
-            mat[i, j] = float(r["psnr"])
-        im = axes[0].imshow(mat, cmap="YlGn", aspect="auto")
-        axes[0].set_xticks(range(len(sats))); axes[0].set_xticklabels([f"{s:.1f}" for s in sats])
-        axes[0].set_yticks(range(len(gammas))); axes[0].set_yticklabels([f"{g:.2f}" for g in gammas])
-        axes[0].set_xlabel("saturation s"); axes[0].set_ylabel("gamma offset")
-        axes[0].set_title("PSNR: gamma offset vs. saturation")
-        for i in range(len(gammas)):
-            for j in range(len(sats)):
+    gammas = sorted({float(r["gamma_offset"]) for r in rows})
+    caps = sorted({float(r["exposure_cap"]) for r in rows if "exposure_cap" in r})
+    if not caps:
+        print("tuning csv has no exposure_cap; skip")
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6))
+    for ax, key, title, cmap in (
+        (axes[0], "psnr", "PSNR (dB): gamma offset vs. exposure cap", "YlGn"),
+        (axes[1], "ssim", "SSIM: gamma offset vs. exposure cap", "Blues"),
+    ):
+        mat = np.full((len(caps), len(gammas)), np.nan)
+        for r in rows:
+            i = caps.index(float(r["exposure_cap"]))
+            j = gammas.index(float(r["gamma_offset"]))
+            mat[i, j] = float(r[key])
+        im = ax.imshow(mat, cmap=cmap, aspect="auto")
+        ax.set_xticks(range(len(gammas))); ax.set_xticklabels([f"{g:.2f}" for g in gammas])
+        ax.set_yticks(range(len(caps))); ax.set_yticklabels([f"{c:.2f}" for c in caps])
+        ax.set_xlabel("gamma offset"); ax.set_ylabel("exposure cap")
+        ax.set_title(title, fontsize=11)
+        for i in range(len(caps)):
+            for j in range(len(gammas)):
                 if not np.isnan(mat[i, j]):
-                    axes[0].text(j, i, f"{mat[i, j]:.2f}", ha="center", va="center", fontsize=8)
-        fig.colorbar(im, ax=axes[0], fraction=0.046, pad=0.04)
-    if stage2:
-        stage2 = sorted(stage2, key=lambda r: float(r["radius"]))
-        radii = [float(r["radius"]) for r in stage2]
-        axes[1].plot(radii, [float(r["psnr"]) for r in stage2], "o-", color="#059669", label="PSNR")
-        axes[1].set_xlabel("guided-filter radius r"); axes[1].set_ylabel("PSNR (dB)", color="#059669")
-        axes[1].tick_params(axis="y", labelcolor="#059669")
-        axes[1].grid(alpha=0.25)
-        ax2 = axes[1].twinx()
-        ax2.plot(radii, [float(r["ssim"]) for r in stage2], "s--", color="#2563eb", label="SSIM")
-        ax2.set_ylabel("SSIM", color="#2563eb"); ax2.tick_params(axis="y", labelcolor="#2563eb")
-        axes[1].set_title("PSNR / SSIM vs. radius (eps=0.02)")
-        axes[1].set_xticks(radii)
+                    ax.text(j, i, f"{mat[i, j]:.2f}" if key == "psnr" else f"{mat[i, j]:.3f}",
+                            ha="center", va="center", fontsize=8)
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     plt.tight_layout()
     _save(fig, "tuning.png")
 

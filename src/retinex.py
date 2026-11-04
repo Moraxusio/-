@@ -142,6 +142,13 @@ def enhance(img_bgr: np.ndarray, cfg: RetinexConfig | None = None,
         gain = (channel_mean.mean() / np.maximum(channel_mean, 1e-6)) ** cfg.white_balance
         out = np.clip(out * gain, 0.0, 1.0)
 
+    # Exposure guard: local Retinex can over-brighten low-contrast scenes.
+    # Pull the global mean down to a safe level without touching darker outputs.
+    if cfg.exposure_cap > 0:
+        mean_out = float(out.mean())
+        if mean_out > cfg.exposure_cap:
+            out = out * (cfg.exposure_cap / mean_out)
+
     out_u8 = np.clip(out * 255.0 + 0.5, 0, 255).astype(np.uint8)
 
     if cfg.denoise_h > 0:

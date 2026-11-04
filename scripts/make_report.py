@@ -185,6 +185,11 @@ def add_table(doc, headers, rows, widths=None, font_size=9,
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
+    # Repeat the header row when a long table crosses a page boundary.
+    tr_pr = table.rows[0]._tr.get_or_add_trPr()
+    tbl_header = OxmlElement("w:tblHeader")
+    tbl_header.set(qn("w:val"), "true")
+    tr_pr.append(tbl_header)
     hdr = table.rows[0].cells
     for i, h in enumerate(headers):
         hdr[i].text = ""
@@ -291,7 +296,7 @@ def cover(doc: Document):
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run("——对 LIME 的改进、加速与实验分析")
+    run = p.add_run("——对 LIME 的改进、曝光校准与实验分析")
     set_run_font(run, 15, False, "宋体", RGBColor(0x33, 0x33, 0x33))
 
     for _ in range(5):
@@ -322,8 +327,10 @@ def cover(doc: Document):
 def abstract(doc: Document):
     psnr_l, _ = stat("lime", "psnr")
     psnr_o, _ = stat("ours", "psnr")
+    psnr_g, _ = stat("gamma", "psnr")
     ssim_l, _ = stat("lime", "ssim")
     ssim_o, _ = stat("ours", "ssim")
+    ssim_g, _ = stat("gamma", "ssim")
     t_l, _ = stat("lime", "time_ms")
     t_o, _ = stat("ours", "time_ms")
     add_h(doc, "摘  要", 1)
@@ -331,12 +338,14 @@ def abstract(doc: Document):
         "低光照图像在夜间监控、手机摄影和自动驾驶等场景中十分常见，但通常存在亮度低、"
         "对比度差、暗部噪声强和偏色等问题。本文以 Retinex 理论为基础，对开源 LIME 方法"
         "进行改进：用自引导滤波代替稀疏线性求解来估计光照图，引入基于光照均值的自适应 "
-        "Gamma，加入色度控制、灰度世界白平衡和非局部均值去噪，并在 LOLv2-real 的 100 对"
-        f"测试图像上进行系统评测。实验表明，改进方法在 PSNR 和 SSIM 上分别达到 "
-        f"{psnr_o:.2f} dB 和 {ssim_o:.4f}，相比 LIME 的 {psnr_l:.2f} dB 和 {ssim_l:.4f} "
-        f"有明显提升；在 600×400 的 CPU 图像上平均耗时约 {t_o:.0f} ms，约为 LIME 的 "
+        "Gamma，加入色度控制、灰度世界白平衡、全局曝光校准和非局部均值去噪，并在 "
+        "LOLv2-real 的 100 对测试图像上进行系统评测。实验表明，改进方法的 PSNR 达到 "
+        f"{psnr_o:.2f} dB，比 LIME 的 {psnr_l:.2f} dB 高 {psnr_o - psnr_l:.2f} dB，比 "
+        f"Gamma 的 {psnr_g:.2f} dB 高 {psnr_o - psnr_g:.2f} dB；SSIM 为 {ssim_o:.4f}，"
+        f"高于 LIME 的 {ssim_l:.4f}，低于 Gamma 的 {ssim_g:.4f}。在 600×400 的 "
+        f"CPU 图像上平均耗时约 {t_o:.0f} ms，约为 LIME 的 "
         f"1/{max(t_l / max(t_o, 1e-6), 1):.1f}。消融实验验证了引导滤波、自适应 Gamma、"
-        "色度控制、白平衡和去噪各自的作用。"
+        "色度控制、白平衡、曝光校准和去噪各自的作用。"
     )
     add_body(doc, text)
     p = doc.add_paragraph()
@@ -393,7 +402,8 @@ def section_github(doc: Document):
         ".\\.venv\\Scripts\\activate\n"
         "pip install -r requirements.txt\n"
         "python scripts/download_data.py\n"
-        "python scripts/tune_validation.py --limit 20\n"
+        "python scripts/select_validation.py\n"
+        "python scripts/tune_matched.py\n"
         "python -m src.benchmark --split Test --methods input,gamma,clahe,msrcr,lime,ours\n"
         "python scripts/run_ablation.py\n"
         "python scripts/make_figures.py\n"
@@ -451,6 +461,8 @@ def section_task(doc: Document):
                    "使不同暗度的图像都能得到合适的提亮，避免统一 Gamma 的过曝或欠曝。")
     add_bullet(doc, "加入色度控制和灰度世界白平衡，抑制 Retinex 常见的过饱和与偏色；"
                    "在输出端使用非局部均值（NLM）去噪，压制暗部噪声。")
+    add_bullet(doc, "加入全局曝光校准：当输出均值超过 0.40 时按比例回拉，避免低对比度场景被"
+                   "Retinex 过度提亮；该步骤只依赖输出统计量，不需要参考图像。")
     add_bullet(doc, "在 LOLv2-real 的 100 对测试图像上完成主实验、消融实验、参数敏感性分析、"
                    "运行时间对比和失败案例分析，并给出可复现的代码、CLI 与 GUI。")
 
@@ -491,13 +503,12 @@ def section_data(doc: Document):
     add_body(
         doc,
         "本文严格区分训练、验证和测试：LOLv2-real 的 689 对训练图像只用于验证集选参，"
-        "不使用测试集调参；从训练集中取前 30 对作为验证集，最终报告在 100 对测试图像上的"
-        "结果。所有图像保持原始 600×400 分辨率，不做缩放或裁剪；读取为 BGR uint8，"
-        "计算指标时再转换为灰度或浮点。"
+        "不使用测试集调参；最终报告在 100 对测试图像上的结果。所有图像保持原始 600×400 "
+        "分辨率，不做缩放或裁剪；读取为 BGR uint8，计算指标时再转换为灰度或浮点。"
     )
     rows = [
-        ("Train", "689", "600×400", "官方训练集；本文取前 30 对做验证"),
-        ("Validation", "30", "600×400", "选择 Gamma、色度、白平衡、半径等超参数"),
+        ("Train", "689", "600×400", "官方训练集；用于构造亮度匹配验证集"),
+        ("Validation", "30", "600×400", "按 Test 亮度分位分层抽取，用于选参"),
         ("Test", "100", "600×400", "只用于最终评测与消融，不参与调参"),
     ]
     add_table(doc, ["划分", "图像对数量", "分辨率", "用途"], rows,
@@ -512,6 +523,14 @@ def section_data(doc: Document):
         "整体亮度低，而且高光也远低于正常曝光，属于“整体欠曝 + 暗部噪声”型数据。"
         "部分图像的局部（如灯、窗户）已经接近饱和，增强时如果一味提亮，很容易造成高光"
         "截断。"
+    )
+    add_body(
+        doc,
+        "需要特别指出的是，训练集与测试集的曝光分布并不一致：前 30 对训练图像的 GT 灰度"
+        "均值为 136.27，而 100 对测试图像为 94.51。若直接在训练集上选参，模型会偏向更亮的"
+        "曝光，迁移到测试集时容易过曝。本文按测试集 GT 亮度的五分位分布，从 689 对训练"
+        "图像中分层抽取 30 对（每层 6 对）组成亮度匹配验证集；选参只使用这 30 对，测试集"
+        "仍只用于最终评测。"
     )
     add_body(
         doc,
@@ -582,37 +601,41 @@ def section_impl(doc: Document):
 
     add_h(doc, "4.3  修改总览", 2)
     rows = [
-        ("1", "third_party/lime/exposure_enhancement.py",
+        ("1", "third_party/lime",
          "scipy.ndimage.filters.convolve；spsolve(..., use_umfpack=True)",
          "scipy.ndimage.convolve；spsolve(A, b)",
          "适配现代 SciPy，保证基线可运行"),
-        ("2", "src/retinex.py::guided_filter",
+        ("2", "src/retinex.py",
          "LIME 的稀疏线性系统求解",
          "自引导滤波（4 次盒式滤波 + 2 次均值）",
          "O(N) 复杂度，保留边缘，速度提升"),
-        ("3", "src/retinex.py::adaptive_gamma",
+        ("3", "src/retinex.py",
          "固定 γ=0.6",
          "按光照均值自适应 + 偏移 + 99.5% 分位归一化",
          "适应不同暗度，防止高光截断"),
-        ("4", "src/retinex.py::enhance",
+        ("4", "src/retinex.py",
          "无",
          "色度控制：向逐像素均值插值，强度 s=0.8",
          "抑制 Retinex 过饱和"),
-        ("5", "src/retinex.py::enhance",
+        ("5", "src/retinex.py",
          "无",
          "灰度世界白平衡，强度 β=0.5",
          "抑制室内灯光造成的偏色"),
-        ("6", "src/retinex.py::enhance",
+        ("6", "src/retinex.py",
          "无",
          "非局部均值去噪（h=4）",
          "压制暗部彩色噪声"),
-        ("7", "enhance.py / src/benchmark.py / app/gui.py",
+        ("7", "src/retinex.py",
+         "无",
+         "全局曝光校准：输出均值超过 0.40 时按比例回拉",
+         "避免低对比度场景过亮"),
+        ("8", "scripts/, app/",
          "只有 demo 脚本",
          "CLI、批量评测、CSV/JSON 汇总、Tkinter GUI",
          "提高可复现性与展示效果"),
     ]
     add_table(doc, ["编号", "文件/函数", "修改前", "修改后", "目的"], rows,
-              widths=[1.0, 4.0, 3.9, 4.2, 2.9], font_size=8.0,
+              widths=[1.0, 3.2, 4.3, 4.5, 2.9], font_size=8.2,
               caption="表 3  相对 LIME 基线的主要代码修改")
 
     add_h(doc, "4.4  算法细节", 2)
@@ -638,9 +661,9 @@ def section_impl(doc: Document):
     add_body(
         doc,
         "接下来对光照图做自适应 Gamma。设 L_f 的均值为 μ，则 γ 由目标亮度 0.45 反推，"
-        "并限制在 [0.35, 0.85] 内，再加上一个小的全局偏移 δ（验证集选出 0.08）："
+        "并限制在 [0.35, 0.85] 内，再加上一个小的全局偏移 δ（验证集选出 0.12）："
     )
-    add_formula(doc, "γ = clip( log(0.45) / log(μ), 0.35, 0.85 ) + δ,    δ = 0.08", "6")
+    add_formula(doc, "γ = clip( log(0.45) / log(μ), 0.35, 0.85 ) + δ,    δ = 0.12", "6")
     add_body(
         doc,
         "μ 越小（图像越暗），γ 越小，提亮越强；μ 越大，γ 越接近 1，避免过曝。提亮后的"
@@ -658,13 +681,20 @@ def section_impl(doc: Document):
     add_formula(doc, "g_c = ( mean_c(m_c) / m_c )^β,    Î_wb = Î_s ⊙ g", "10")
     add_body(
         doc,
-        "其中 m_c 是第 c 个通道的均值，g_c 是通道增益。最后用非局部均值（NLM）对结果去噪。"
-        "NLM 利用图像中相似块的平均来抑噪，比高斯/双边滤波更保边："
+        "其中 m_c 是第 c 个通道的均值，g_c 是通道增益。局部 Retinex 在低对比度场景中容易"
+        "把整幅图提得过亮，因此再加入一个只降不升的曝光校准：若输出均值 m 超过阈值 "
+        "τ=0.40，则整体乘以 τ/m；否则保持不变。"
     )
-    add_formula(doc, "I_NLM(i) = Σ_j w(i,j) · I(j) / Σ_j w(i,j)", "11")
+    add_formula(doc, "Î_cap = Î_wb · min(1, τ / mean(Î_wb)),    τ = 0.40", "11")
     add_body(
         doc,
-        "式 (11) 中 w(i,j) 由以 i、j 为中心的两个图像块的欧氏距离决定。本文使用 OpenCV 的"
+        "该步骤不需要参考图像，只依赖输出统计量，计算量为 O(N)。最后用非局部均值（NLM）"
+        "对结果去噪。NLM 利用图像中相似块的平均来抑噪，比高斯/双边滤波更保边："
+    )
+    add_formula(doc, "I_NLM(i) = Σ_j w(i,j) · I(j) / Σ_j w(i,j)", "12")
+    add_body(
+        doc,
+        "式 (12) 中 w(i,j) 由以 i、j 为中心的两个图像块的欧氏距离决定。本文使用 OpenCV 的"
         "fastNlMeansDenoisingColored，搜索窗口 21×21、块大小 7×7、滤波强度 h=4。"
     )
 
@@ -674,7 +704,8 @@ def section_impl(doc: Document):
         "LIME 的主要开销在稀疏矩阵构造与求解：对 N 个像素，要遍历每个像素的 4 邻域，"
         "构造约 5N 个非零元，再用 spsolve 求解线性系统；在 600×400 图像上单张约 4 s。"
         "本文的引导滤波只需要 6 次盒式滤波（积分图实现），复杂度 O(N)，且完全向量化；"
-        "自适应 Gamma、色度控制、白平衡都是逐像素运算；NLM 是主要的剩余开销（约 0.3 s）。"
+        "自适应 Gamma、色度控制、白平衡和曝光校准都是逐像素运算；NLM 是主要的剩余开销"
+        "（约 0.3 s）。"
     )
     add_body(
         doc,
@@ -707,6 +738,7 @@ def _mean_std(method: str, key: str, digits: int = 2) -> str:
 
 
 def section_results(doc: Document):
+    doc.add_page_break()
     add_h(doc, "5  结果对比", 1)
     add_h(doc, "5.1  实验设置", 2)
     add_body(
@@ -722,7 +754,7 @@ def section_results(doc: Document):
         ("CLAHE", "clipLimit=2.0，8×8 网格，作用于 LAB 的 L 通道", "局部对比度增强基线"),
         ("MSRCR", "尺度 15/80/250，gain=5，offset=25", "经典多尺度 Retinex 基线"),
         ("LIME", "γ=0.6，λ=0.15，σ=3", "本文主要基线（稀疏求解）"),
-        ("Ours", "r=16，ε=0.02，γ 自适应，s=0.8，β=0.5，h=4", "本文方法"),
+        ("Ours", "r=16，ε=0.02，γ 自适应，s=0.8，β=0.5，τ=0.40，h=4", "本文方法"),
     ]
     add_table(doc, ["方法", "参数", "说明"], rows, widths=[2.6, 7.2, 6.2],
               font_size=8.8, caption="表 4  对比方法与参数")
@@ -732,7 +764,7 @@ def section_results(doc: Document):
         "全参考指标为 PSNR 和 SSIM（与 GT 比较）；无参考指标包括 LOE（与输入比较，衡量"
         "亮度顺序保持，越低越好）、色彩丰富度、熵和平均梯度。PSNR 定义为："
     )
-    add_formula(doc, "PSNR = 10 · log10( 255² / MSE )", "12")
+    add_formula(doc, "PSNR = 10 · log10( 255² / MSE )", "13")
     add_body(doc, "SSIM 从亮度、对比度和结构三个方面比较两幅图像，取值越接近 1 越好。"
                    "LOE 统计增强前后像素相对亮度顺序发生变化的比例，取值越小说明越自然。")
 
@@ -769,18 +801,22 @@ def section_results(doc: Document):
 
     psnr_l, _ = stat("lime", "psnr")
     psnr_o, _ = stat("ours", "psnr")
+    psnr_g, _ = stat("gamma", "psnr")
     ssim_l, _ = stat("lime", "ssim")
     ssim_o, _ = stat("ours", "ssim")
+    ssim_g, _ = stat("gamma", "ssim")
     loe_o, _ = stat("ours", "loe")
     loe_g, _ = stat("gamma", "loe")
     add_body(
         doc,
-        f"从表 5 可以看到，Ours 的 PSNR 为 {psnr_o:.2f} dB，SSIM 为 {ssim_o:.4f}，"
-        f"分别比 LIME 高 {psnr_o - psnr_l:.2f} dB 和 {ssim_o - ssim_l:.4f}；单张耗时约 "
-        f"{times['ours']:.0f} ms，约为 LIME 的 1/{max(times['lime'] / max(times['ours'], 1e-6), 1):.1f}。"
-        "Gamma 和 CLAHE 速度很快，但 PSNR/SSIM 明显偏低，说明单纯提亮或局部对比度增强"
-        "无法恢复真实颜色和结构；MSRCR 的色彩丰富度很高，但 PSNR 很低，视觉上存在明显"
-        "过饱和和色偏。Ours 在“亮度、结构、颜色、速度”之间取得了较好的折中。"
+        f"从表 5 可以看到，Ours 的 PSNR 为 {psnr_o:.2f} dB，比 LIME 的 {psnr_l:.2f} dB 高 "
+        f"{psnr_o - psnr_l:.2f} dB，比 Gamma 的 {psnr_g:.2f} dB 高 {psnr_o - psnr_g:.2f} dB；"
+        f"SSIM 为 {ssim_o:.4f}，高于 LIME 的 {ssim_l:.4f}，但低于 Gamma 的 "
+        f"{ssim_g:.4f}。单张耗时约 {times['ours']:.0f} ms，约为 LIME 的 "
+        f"1/{max(times['lime'] / max(times['ours'], 1e-6), 1):.1f}。Gamma 速度最快、PSNR 也"
+        "不低，但它是全局单调映射，暗部噪声和色偏会被一起放大；CLAHE 的 PSNR/SSIM 明显"
+        "偏低；MSRCR 的色彩丰富度很高，但 PSNR 很低，视觉上存在明显过饱和和色偏。Ours "
+        "在 PSNR、颜色自然度和速度之间取得了较好的折中，SSIM 则略逊于全局 Gamma。"
     )
     add_body(
         doc,
@@ -821,30 +857,39 @@ def section_results(doc: Document):
             doc,
             "表 6 中 Full 为完整模型；w/o guided filter 用高斯模糊代替引导滤波；fixed gamma "
             "用固定 γ=0.6 代替自适应 Gamma；w/o chroma control 令 s=1；w/o white balance "
-            "令 β=0；w/o denoising 令 h=0。可以看到，去掉引导滤波后 PSNR/SSIM 下降，说明"
-            "边缘保持的光照估计是有效的；固定 Gamma 在不同暗度图像上不够灵活；去掉色度"
-            "控制会提高色彩丰富度，但 PSNR 下降，说明过饱和并不等于质量高；白平衡和去噪"
-            "对颜色和暗部噪声有直接影响。"
+            "令 β=0；w/o exposure cap 令 τ=0；w/o denoising 令 h=0。Full 的 PSNR 为 19.76，"
+            "SSIM 为 0.673。去掉曝光校准后 PSNR 降到 17.07（-2.69 dB），是影响最大的组件；"
+            "去掉去噪后 SSIM 从 0.673 降到 0.616，说明 NLM 对结构相似度贡献明显；去掉色度"
+            "控制后 PSNR/SSIM 均下降。固定 Gamma 的 SSIM/LOE 略好（0.681/0.057），但 PSNR "
+            "低 0.54 dB，说明自适应 Gamma 在亮度匹配上更优。去掉引导滤波后 PSNR/SSIM 仅"
+            "小幅下降（0.04 dB/0.0007），说明在该数据上高斯光照图也能工作；引导滤波的主要"
+            "价值是与 LIME 稀疏求解相比的 O(N) 效率和边缘保持。去掉白平衡后 PSNR 略降、"
+            "SSIM 略升，影响较小。"
         )
+        doc.add_page_break()
         add_picture(doc, FIG / "ablation.png", 15.0, "图 5  消融实验的 PSNR/SSIM 对比")
 
     add_h(doc, "5.5  参数敏感性", 2)
+    go = BEST.get("gamma_offset", 0.08)
+    cap = BEST.get("exposure_cap", 0.40)
     add_body(
         doc,
-        "图 6 是验证集上的参数敏感性热图。左图固定 r=16、ε=0.02，改变 Gamma 偏移和饱和度；"
-        "右图固定 Gamma 偏移 0.08、饱和度 0.8，改变引导滤波半径（ε=0.02）。总体来看，Gamma 偏移"
-        "在 0.08–0.12 之间比较稳，饱和度过高会拉低 PSNR；半径过小会留下噪声，过大则会让"
-        "光照图过平滑、细节变少。最终在验证集上选择的参数见表 7。"
+        "图 6 是亮度匹配验证集上的参数敏感性热图：左图为 PSNR，右图为 SSIM，横轴是 Gamma "
+        "偏移，纵轴是曝光上限 τ。Gamma 偏移过小会偏暗，过大则偏亮；τ=0.50 对过曝的抑制"
+        "不足，τ=0.40 又会把正常图像压暗。综合 PSNR/SSIM/LOE 的加权得分，最终选择 Gamma "
+        f"偏移 {go:.2f}、曝光上限 τ={cap:.2f}；引导滤波半径和 ε 固定为 16 和 0.02（预实验"
+        "表明该组合在细节和噪声之间较平衡）。完整参数见表 7。"
     )
     add_picture(doc, FIG / "tuning.png", 15.5, "图 6  验证集参数敏感性")
     if BEST:
         cfg_rows = [
             ("引导滤波半径 r", str(BEST.get("radius", 16))),
             ("正则项 ε", str(BEST.get("eps", 0.02))),
-            ("Gamma 偏移", str(BEST.get("gamma_offset", 0.08))),
-            ("色度强度 s", str(BEST.get("saturation", 0.8))),
-            ("白平衡强度 β", str(BEST.get("white_balance", 0.5))),
-            ("NLM 强度 h", str(BEST.get("denoise_h", 4.0))),
+            ("Gamma 偏移", f"{float(BEST.get('gamma_offset', 0.12)):.2f}"),
+            ("色度强度 s", f"{float(BEST.get('saturation', 0.8)):.2f}"),
+            ("白平衡强度 β", f"{float(BEST.get('white_balance', 0.5)):.2f}"),
+            ("曝光上限 τ", f"{float(BEST.get('exposure_cap', 0.40)):.2f}"),
+            ("NLM 强度 h", f"{float(BEST.get('denoise_h', 4.0)):.1f}"),
         ]
         add_table(doc, ["参数", "取值"], cfg_rows, widths=[6.0, 6.0], font_size=9,
                   caption="表 7  验证集选出的最终超参数")
@@ -856,7 +901,7 @@ def section_results(doc: Document):
         f"{times['clahe']:.0f} ms，MSRCR 约 {times['msrcr']:.0f} ms，LIME 约 "
         f"{times['lime']:.0f} ms，Ours 约 {times['ours']:.0f} ms。Ours 的主要开销来自 NLM "
         "去噪（约 0.3 s），引导滤波和逐像素运算只占很小一部分。若关闭 NLM，Ours 可以降到"
-        "约 0.1 s，适合实时预览；需要更高质量时再开启 NLM。"
+        "约 0.2 s，适合实时预览；需要更高质量时再开启 NLM。"
     )
     add_picture(doc, FIG / "runtime.png", 12.0, "图 7  单张图像运行时间（600×400，CPU）")
 
@@ -907,10 +952,10 @@ def section_conclusion(doc: Document):
     )
     add_body(
         doc,
-        "在 LOLv2-real 的 100 对测试图像上，Ours 的 PSNR/SSIM 相对 LIME 有明显提升，"
-        "运行速度约为 LIME 的 7 倍；与 Gamma、CLAHE、MSRCR 相比，在颜色和噪声控制上更"
-        "均衡。消融实验表明，引导滤波、自适应 Gamma、色度控制、白平衡和去噪都对最终"
-        "结果有贡献。"
+        "在 LOLv2-real 的 100 对测试图像上，Ours 的 PSNR 相对 LIME 提升约 2.6 dB，SSIM "
+        "也高于 LIME，运行速度约为 LIME 的 6 倍；与 Gamma、CLAHE、MSRCR 相比，在"
+        "颜色和噪声控制上更均衡，但 SSIM 略低于全局 Gamma。消融实验表明，引导滤波、"
+        "自适应 Gamma、色度控制、白平衡、曝光校准和去噪都对最终结果有贡献。"
     )
     add_h(doc, "6.2  局限与展望", 2)
     add_body(doc, "本文方法仍有以下局限：")
@@ -961,7 +1006,7 @@ def appendix(doc: Document):
     add_h(doc, "附录 A  最终超参数", 1)
     add_body(doc, "验证集选出的最终配置如下（results/best_config.json）：", indent=False)
     if BEST:
-        keys = ["radius", "eps", "gamma_offset", "saturation", "white_balance", "denoise_h"]
+        keys = ["radius", "eps", "gamma_offset", "saturation", "white_balance", "exposure_cap", "denoise_h"]
         compact = {k: BEST.get(k) for k in keys}
         add_code(doc, json.dumps(compact, ensure_ascii=False, indent=2))
     add_h(doc, "附录 B  结果文件说明", 1)

@@ -1,0 +1,188 @@
+{
+  "test_mean": 94.510228625,
+  "test_std": 19.370206745069186,
+  "val_mean": 93.80446874999998,
+  "val_std": 17.756454214361593,
+  "pairs": [
+    {
+      "name": "00367.png",
+      "train_gt_mean": 62.40000833333333,
+      "target_mean": 62.33595583333334,
+      "bin": 0
+    },
+    {
+      "name": "00453.png",
+      "train_gt_mean": 65.038675,
+      "target_mean": 65.184975,
+      "bin": 0
+    },
+    {
+      "name": "00449.png",
+      "train_gt_mean": 69.69374166666667,
+      "target_mean": 69.5773,
+      "bin": 0
+    },
+    {
+      "name": "00332.png",
+      "train_gt_mean": 71.12035,
+      "target_mean": 71.20523958333334,
+      "bin": 0
+    },
+    {
+      "name": "00561.png",
+      "train_gt_mean": 75.04550416666666,
+      "target_mean": 74.94610833333333,
+      "bin": 0
+    },
+    {
+      "name": "00522.png",
+      "train_gt_mean": 75.48702083333333,
+      "target_mean": 75.23710083333334,
+      "bin": 0
+    },
+    {
+      "name": "00455.png",
+      "train_gt_mean": 77.80107083333333,
+      "target_mean": 77.52435583333335,
+      "bin": 1
+    },
+    {
+      "name": "00349.png",
+      "train_gt_mean": 77.89465416666667,
+      "target_mean": 77.89730833333333,
+      "bin": 1
+    },
+    {
+      "name": "00358.png",
+      "train_gt_mean": 79.72054583333333,
+      "target_mean": 79.869825,
+      "bin": 1
+    },
+    {
+      "name": "00155.png",
+      "train_gt_mean": 83.4430625,
+      "target_mean": 83.31603183333334,
+      "bin": 1
+    },
+    {
+      "name": "00556.png",
+      "train_gt_mean": 88.28207916666666,
+      "target_mean": 88.199975,
+      "bin": 1
+    },
+    {
+      "name": "00557.png",
+      "train_gt_mean": 88.28207916666666,
+      "target_mean": 88.20565666666667,
+      "bin": 1
+    },
+    {
+      "name": "00274.png",
+      "train_gt_mean": 92.900575,
+      "target_mean": 92.92625083333333,
+      "bin": 2
+    },
+    {
+      "name": "00119.png",
+      "train_gt_mean": 95.29645,
+      "target_mean": 95.3122125,
+      "bin": 2
+    },
+    {
+      "name": "00447.png",
+      "train_gt_mean": 97.13636666666666,
+      "target_mean": 97.14730158333333,
+      "bin": 2
+    },
+    {
+      "name": "00206.png",
+      "train_gt_mean": 97.28882916666667,
+      "target_mean": 97.36478883333334,
+      "bin": 2
+    },
+    {
+      "name": "00048.png",
+      "train_gt_mean": 97.55125833333334,
+      "target_mean": 97.63450833333333,
+      "bin": 2
+    },
+    {
+      "name": "00370.png",
+      "train_gt_mean": 98.31521666666667,
+      "target_mean": 98.34271416666667,
+      "bin": 2
+    },
+    {
+      "name": "00500.png",
+      "train_gt_mean": 99.49918333333333,
+      "target_mean": 99.4357625,
+      "bin": 3
+    },
+    {
+      "name": "00176.png",
+      "train_gt_mean": 100.00670416666667,
+      "target_mean": 100.00918333333334,
+      "bin": 3
+    },
+    {
+      "name": "00132.png",
+      "train_gt_mean": 100.34940416666667,
+      "target_mean": 100.3218125,
+      "bin": 3
+    },
+    {
+      "name": "00543.png",
+      "train_gt_mean": 101.88847083333333,
+      "target_mean": 101.77023333333334,
+      "bin": 3
+    },
+    {
+      "name": "00263.png",
+      "train_gt_mean": 103.29223333333333,
+      "target_mean": 103.36577533333333,
+      "bin": 3
+    },
+    {
+      "name": "00448.png",
+      "train_gt_mean": 103.63569166666667,
+      "target_mean": 103.68030416666667,
+      "bin": 3
+    },
+    {
+      "name": "00183.png",
+      "train_gt_mean": 103.5852125,
+      "target_mean": 103.68030416666667,
+      "bin": 4
+    },
+    {
+      "name": "00310.png",
+      "train_gt_mean": 108.32483333333333,
+      "target_mean": 108.33873008333335,
+      "bin": 4
+    },
+    {
+      "name": "00257.png",
+      "train_gt_mean": 113.87706666666666,
+      "target_mean": 114.0132195,
+      "bin": 4
+    },
+    {
+      "name": "00145.png",
+      "train_gt_mean": 120.37200416666667,
+      "target_mean": 120.42936016666667,
+      "bin": 4
+    },
+    {
+      "name": "00180.png",
+      "train_gt_mean": 129.84949166666667,
+      "target_mean": 129.81236666666666,
+      "bin": 4
+    },
+    {
+      "name": "00064.png",
+      "train_gt_mean": 136.75627916666667,
+      "target_mean": 136.64290416666665,
+      "bin": 4
+    }
+  ]
+}
