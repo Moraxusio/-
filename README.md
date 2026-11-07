@@ -120,7 +120,7 @@ lowlight-retinex/
 ```bibtex
 @misc{lowlight_retinex_2026,
   title  = {Low-light Image Enhancement with Guided-Filter Retinex},
-  author = {<Your Name>},
+  author = {樊恩旭},
   year   = {2026},
   url    = {https://github.com/<your-account>/lowlight-retinex}
 }
