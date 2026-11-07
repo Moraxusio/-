@@ -363,14 +363,14 @@ def section_github(doc: Document):
     add_body(
         doc,
         "本项目的完整代码、数据下载脚本、实验脚本、图表和报告生成脚本均放在同一个仓库中。"
-        "仓库地址如下（提交前请把占位用户名替换为实际 GitHub 用户名）："
+        "仓库地址如下："
     )
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run("https://github.com/<your-account>/lowlight-retinex")
+    run = p.add_run("https://github.com/Moraxusio/-")
     set_run_font(run, 11, True, "Consolas", RGBColor(0x1D, 0x4E, 0xD8))
     run.underline = True
-    add_caption(doc, "说明：本地仓库已包含全部提交内容，push 后即可访问。")
+    add_caption(doc, "说明：仓库已包含全部提交内容。")
 
     add_h(doc, "1.1  仓库结构", 2)
     rows = [
